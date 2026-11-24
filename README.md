@@ -9,6 +9,17 @@ Cerchi con la penna una parte dello schermo e finisce direttamente nella chat.
 ![Android 11+](https://img.shields.io/badge/Android-11%2B-3DDC84?logo=android&logoColor=white)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 
+<p align="center">
+  <img src="docs/screenshots/2-domande-rapide.png" alt="Il pannello di AI Overlay con ChatGPT aperto sopra una pagina di Wikipedia: il ritaglio della figura è già allegato e sopra ci sono i pulsanti delle domande rapide" width="100%">
+</p>
+
+<table>
+  <tr>
+    <td width="50%" align="center"><img src="docs/screenshots/1-cerchia.png" alt="Schermata di ritaglio: la figura del teorema di Pitagora cerchiata in rosso con la penna, con i pulsanti Tutto lo schermo e Annulla"><br><sub><b>1.</b> Cerchi con la penna quello che ti serve</sub></td>
+    <td width="50%" align="center"><img src="docs/screenshots/3-tastiera.png" alt="Il pannello si accorcia sopra la tastiera: la casella di ChatGPT con il ritaglio allegato resta visibile"><br><sub><b>2.</b> Il ritaglio è già in chat, e la casella resta sopra la tastiera</sub></td>
+  </tr>
+</table>
+
 ---
 
 ## Perché

@@ -413,7 +413,7 @@ class OverlayService : AccessibilityService() {
         @JavascriptInterface fun save(dataUrl: String, name: String) = saveDataUrl(dataUrl, name)
 
         @JavascriptInterface fun pasted(how: String) {
-            if (how == "none" || how == "unsure") bubble.post { toast("Se lo screen non è in chat, tocca 📎 / +: è già pronto") }
+            if (how == "none") bubble.post { toast("Tocca 📎 / + nella chat: lo screen è pronto") }
         }
     }
 
@@ -537,29 +537,28 @@ class OverlayService : AccessibilityService() {
             '[contenteditable=true]', 'textarea'].map(s => document.querySelector(s)).find(Boolean)"""
 
         /**
-         * Pastes the image into the chat box like Ctrl+V. Some sites (ChatGPT) ignore a simulated paste,
-         * so if no image preview shows up we hand the file to the page's upload input instead.
-         * Result goes to Bridge.pasted, because evaluateJavascript can't wait for the async check.
+         * Pastes the image into the chat box like Ctrl+V. A site that takes the paste claims it (preventDefault):
+         * ChatGPT and Gemini do. Claude ignores a simulated paste, so then the file goes to the page's upload input.
+         * Counting preview images instead was wrong: ChatGPT removes other images at the same moment,
+         * which looked like a failed paste and caused a duplicate upload.
          */
         private val PASTE_JS = """
-            (async function(){
+            (function(){
               const b = atob('__B64__'); const u = new Uint8Array(b.length);
               for (let i = 0; i < b.length; i++) u[i] = b.charCodeAt(i);
               const dt = new DataTransfer();
               dt.items.add(new File([u], 'screenshot.png', {type: 'image/png'}));
-              const previews = () => [...document.querySelectorAll('img')].filter(i => /^(blob|data):/.test(i.src)).length;
-              const before = previews();
               const ed = $EDITOR;
               if (ed) {
                 ed.focus();
-                ed.dispatchEvent(new ClipboardEvent('paste', {clipboardData: dt, bubbles: true, cancelable: true}));
-                await new Promise(r => setTimeout(r, 1500));
-                if (previews() > before) return AiOverlay.pasted('paste');
+                const ev = new ClipboardEvent('paste', {clipboardData: dt, bubbles: true, cancelable: true});
+                ed.dispatchEvent(ev);
+                if (ev.defaultPrevented) return AiOverlay.pasted('paste');
               }
               const inp = [...document.querySelectorAll('input[type=file]')].find(i => /image/.test(i.accept))
                        || document.querySelector('input[type=file]');
               if (inp) { inp.files = dt.files; inp.dispatchEvent(new Event('change', {bubbles: true})); return AiOverlay.pasted('file'); }
-              AiOverlay.pasted(ed ? 'unsure' : 'none');
+              AiOverlay.pasted('none');
             })()
         """.trimIndent()
 

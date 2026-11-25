@@ -46,6 +46,8 @@ import android.view.WindowManager.LayoutParams.WRAP_CONTENT
 import android.view.accessibility.AccessibilityEvent
 import android.view.accessibility.AccessibilityWindowInfo
 import android.graphics.Rect
+import android.graphics.Region
+import android.os.Build
 import android.webkit.CookieManager
 import android.webkit.JavascriptInterface
 import android.webkit.PermissionRequest
@@ -132,7 +134,13 @@ class OverlayService : AccessibilityService() {
     }
 
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
-        if (event?.eventType == AccessibilityEvent.TYPE_WINDOWS_CHANGED) fitAboveKeyboard()
+        if (event?.eventType == AccessibilityEvent.TYPE_WINDOWS_CHANGED) refitSoon()
+    }
+
+    /** The keyboard can still be sliding in or resizing when the event arrives: measure again until it settles. */
+    private fun refitSoon() {
+        fitAboveKeyboard()
+        panel?.let { p -> listOf(150L, 400L, 900L).forEach { p.postDelayed({ fitAboveKeyboard() }, it) } }
     }
 
     /**
@@ -141,11 +149,24 @@ class OverlayService : AccessibilityService() {
      */
     private fun fitAboveKeyboard() {
         val p = panel ?: return
-        val imeTop = windows.firstOrNull { it.type == AccessibilityWindowInfo.TYPE_INPUT_METHOD }
-            ?.let { w -> Rect().also { w.getBoundsInScreen(it) }.top }
         val loc = IntArray(2).also { p.getLocationOnScreen(it) }
-        val covered = if (panelShown && imeTop != null) max(0, loc[1] + p.height - imeTop) else 0
+        // Highest top among keyboard windows that sit under the panel: some keyboards put suggestions or a toolbar
+        // in a window of their own, and a floating/split keyboard beside the panel doesn't cover it.
+        val imeTop = windows.filter { it.type == AccessibilityWindowInfo.TYPE_INPUT_METHOD }
+            .map(::keyboardRect)
+            .filter { it.right > loc[0] && it.left < loc[0] + p.width }
+            .minOfOrNull { it.top }
+        val overlap = if (panelShown && imeTop != null) loc[1] + p.height - imeTop else 0
+        val covered = if (overlap > 0) overlap + 8.dp else 0 // small margin: a few px of error must not hide the box
         if (p.paddingBottom != covered) p.setPadding(0, 0, 0, covered)
+    }
+
+    /** The keys themselves: a keyboard's window can be much bigger than its keys (Samsung's floating keyboard). */
+    private fun keyboardRect(w: AccessibilityWindowInfo): Rect {
+        if (Build.VERSION.SDK_INT >= 33) {
+            Region().also { w.getRegionInScreen(it) }.bounds.takeIf { !it.isEmpty }?.let { return it }
+        }
+        return Rect().also { w.getBoundsInScreen(it) }
     }
     override fun onInterrupt() {}
 
